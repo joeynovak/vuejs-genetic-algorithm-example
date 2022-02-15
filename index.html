@@ -1,0 +1,243 @@
+<html lang="en" class=""><head>
+
+    <meta charset="UTF-8">
+    <title>Genetic Example in VueJS</title>
+
+    <meta name="robots" content="noindex">
+    <link rel="stylesheet" href="https://unpkg.com/purecss@2.0.6/build/pure-min.css" integrity="sha384-Uu6IeWbM+gzNVXJcM9XV3SohHtmWE+3VGi496jvgX1jyvDTXfdK+rfZc8C1Aehk5" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/css/font-awesome.min.css">
+    <script src="https://unpkg.com/vue@2"></script>
+    <style>
+        table.generation td {
+            white-space: nowrap;
+            font-family: "Courier New";
+        }
+
+    </style>
+</head>
+
+<body class="text-center body">
+<div id="app" class="text-center">
+    <table style="height:1%">
+        <tr>
+            <td colspan="3">
+                <button v-on:click="go" style="width: 100%">Create Initial Random Population</button>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <button v-on:click="score">Score</button>
+            </td>
+            <td>
+                Target String:
+            </td>
+            <td>
+                <input type="text" size="30" v-model="targetString">
+            </td>
+        </tr>
+
+        <tr>
+            <td>
+                <button v-on:click="prune">Prune</button>
+            </td>
+            <td>
+                Keep:
+            </td>
+            <td>
+                <input type="text" @change="generateStyles" v-model="keep">
+            </td>
+        </tr>
+        <tr>
+            <td rowspan="2">
+                <button v-on:click="breed" style="height:100%">Breed</button>
+            </td>
+            <td>
+                Population Size:
+            </td>
+            <td>
+                <input type="text" v-model="populationSize">
+            </td>
+        </tr>
+        <tr>
+
+            <td>
+                Mutation Factor:
+            </td>
+            <td>
+                <input type="text" v-model="mutationFactor">
+            </td>
+        </tr>
+        <tr>
+            <td colspan="3">
+                <button v-on:click="score(); prune(); breed()" style="width:100%">Score, Prune, and then Breed</button>
+            </td>
+        </tr>
+    </table>
+
+    <div style="overflow-x: scroll">
+    <table>
+        <tr>
+            <td v-for="(aPopulation, index) in population.slice().reverse()" :key="index" style="vertical-align: top;">
+                <table class="generation">
+                    <tbody>
+                    <tr><th colspan="2">Generation {{ population.length - index }}</th></tr>
+                    <tr>
+                        <th>Score</th>
+                        <th>Text</th>
+                    </tr>
+                        <tr v-for="(citizen, citizenIndex) in aPopulation">
+                            <td v-if="index == 0">{{ citizen.score }}</td>
+                            <td v-else="index == 0" :class="'s-' + citizenIndex">{{ citizen.score }}</td>
+                            <td v-if="index == 0">
+                                <span v-for="(character, index) in citizen.text" :class="'s-' + citizen.geneSources[index]">{{ character }}</span>
+                            </td>
+                            <td v-else :class="'s-' + citizenIndex">
+                                {{ citizen.text }}
+                            </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </td>
+        </tr>
+    </table>
+    </div>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            lights: true,
+            targetString: 'The fox jumped over the fence.',
+            population: [],
+            populationSize: 500,
+            keep: 10,
+            mutationFactor: 0.02,
+            currentGeneration: 0
+        },
+        created: function(){
+          this.generateStyles();
+        },
+        methods: {
+            go: function(){
+                this.currentGeneration = 0;
+                this.population = [];
+                Vue.set(this.population, this.currentGeneration, []);
+                for(var i = 0; i < this.populationSize; i++){
+                    Vue.set(this.population[this.currentGeneration], i, this.randomCitizen());
+                }
+            },
+            score: function(){
+                for(var c in this.population[this.currentGeneration]){
+                    this.population[this.currentGeneration][c].score = this.scoreACitizen(this.targetString, this.population[this.currentGeneration][c].text);
+                }
+                this.population[this.currentGeneration].sort(function(a, b){
+                    return b.score - a.score;
+                });
+            },
+            prune: function(){
+                Vue.set(this.population, this.currentGeneration, this.population[this.currentGeneration].slice(0, this.keep));
+            },
+            breed: function(){
+                this.currentGeneration++;
+                Vue.set(this.population, this.currentGeneration, []);
+                for(var i = 0; i<this.populationSize; i++){
+                    Vue.set(this.population[this.currentGeneration], i, this.randomCitizenFromKeepers());
+                }
+            },
+            randomCitizenFromKeepers: function(){
+                var newString = '';
+                sources = [];
+                for(var i = 0; i<this.targetString.length; i++){
+                    var source = this.getRandomInt(this.keep);
+                    var character = this.population[this.currentGeneration-1][source].text.substr(i, 1);
+                    if(Math.random() < this.mutationFactor){
+                        character = this.makeid(1);
+                        sources.push('R');
+                    } else {
+                        sources.push(source);
+                    }
+                    newString = newString + character;
+                }
+                return {
+                    score: 0,
+                    text: newString,
+                    geneSources: sources
+                }
+            },
+            makeid: function(length) {
+                var result           = '';
+                var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789$= _-.();,';
+                var charactersLength = characters.length;
+                for ( var i = 0; i < length; i++ ) {
+                    result += characters.charAt(Math.floor(Math.random() *
+                        charactersLength));
+                }
+                return result;
+            },
+            getRandomInt: function(max){
+                return Math.floor(Math.random() * max);
+            },
+            randomCitizen: function(){
+                return {score: 0, text: this.makeid(this.targetString.length), geneSources: []};
+            },
+            scoreACitizen: function(targetString, string){
+                var longer = targetString;
+                var shorter = string;
+                if (targetString.length < string.length) {
+                    longer = string;
+                    shorter = targetString;
+                }
+                var longerLength = longer.length;
+                if (longerLength == 0) {
+                    return 1.0;
+                }
+                var score = (longerLength - this.charactersDifferent(longer, shorter)) / parseFloat(longerLength);
+                return score.toFixed(2);
+            },
+            charactersDifferent: function(s1, s2) {
+                var cost = 0;
+                for (var i = 0; i <= s1.length; i++) {
+                    if(s1[i] != s2[i]){
+                        cost++
+                    }
+                }
+                return cost;
+            },
+            generateStyles: function(){
+                function changeStylesheetRule(stylesheet, selector, property, value) {
+                    // Make the strings lowercase
+                    selector = selector.toLowerCase();
+                    property = property.toLowerCase();
+                    value = value.toLowerCase();
+
+                    // Change it if it exists
+                    for(var i = 0; i < stylesheet.cssRules.length; i++) {
+                        var rule = stylesheet.cssRules[i];
+                        if(rule.selectorText === selector) {
+                            rule.style[property] = value;
+                            return;
+                        }
+                    }
+
+                    // Add it if it does not
+                    stylesheet.insertRule(selector + " { " + property + ": " + value + "; }", 0);
+                }
+
+                var s = document.styleSheets[2];
+                var colors = this.keep;
+                var minHue = 10;
+                var maxHue = 321;
+                var hueChangePerStep = (maxHue - minHue) / (colors - 1)
+                for(var i=0; i<=colors;i++){
+                    var newHue = minHue + (hueChangePerStep*i);
+                    changeStylesheetRule(s, ".s-" + i, 'background-color', 'hsl(' + newHue + ', 50%, 90%)')
+                }
+
+            }
+        }
+    });
+</script>
+
+
+</body></html>
